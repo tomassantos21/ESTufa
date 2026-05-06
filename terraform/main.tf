@@ -39,7 +39,7 @@ resource "azurerm_cosmosdb_account" "cosmos" {
   }
 }
 
-# 3. Storage Account (Blob Storage para fotos)[cite: 1, 2]
+# 3. Storage Account (Blob Storage para fotos)
 resource "azurerm_storage_account" "storage" {
   name                     = "saestufa${random_string.sufixo.result}"
   resource_group_name      = azurerm_resource_group.rg.name
@@ -72,7 +72,7 @@ resource "azurerm_service_plan" "app_plan" {
   sku_name            = "B1"
 }
 
-# 6. Front-end (Web App para Containers)[cite: 1, 2]
+# 6. Front-end (Web App para Containers)
 resource "azurerm_linux_web_app" "frontend" {
   name                = "estufa-frontend-${random_string.sufixo.result}"
   resource_group_name = azurerm_resource_group.rg.name
@@ -89,12 +89,13 @@ resource "azurerm_linux_web_app" "frontend" {
 
 # Ligação ao Repo do Front-end
 resource "azurerm_app_service_source_control" "fe_deploy" {
-  app_id   = azurerm_linux_web_app.frontend.id
-  repo_url = "https://github.com/teu-user/estufa-frontend"
-  branch   = "main"
+  app_id                 = azurerm_linux_web_app.frontend.id
+  repo_url               = "https://github.com/tomassantos21/ESTufa"
+  branch                 = "main"
+  use_manual_integration = true
 }
 
-# 7. Back-end (Azure Functions Serverless)[cite: 1, 2]
+# 7. Back-end (Azure Functions Serverless)
 resource "azurerm_linux_function_app" "backend" {
   name                       = "estufa-backend-${random_string.sufixo.result}"
   resource_group_name        = azurerm_resource_group.rg.name
@@ -118,7 +119,8 @@ resource "azurerm_linux_function_app" "backend" {
 
 # Ligação ao Repo do Back-end (Functions)
 resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id   = azurerm_linux_function_app.backend.id
-  repo_url = "https://github.com/teu-user/estufa-functions-api"
-  branch   = "main"
+  app_id                 = azurerm_linux_function_app.backend.id
+  repo_url               = "https://github.com/tomassantos21/ESTufa-API"
+  branch                 = "main"
+  use_manual_integration = true
 }
