@@ -228,20 +228,21 @@ resource "null_resource" "deploy_backend" {
   provisioner "local-exec" {
     interpreter = ["PowerShell", "-Command"]
     command     = <<-PWSH
+      $ErrorActionPreference = 'Stop'
       if (Test-Path _api_tmp) { Remove-Item -Recurse -Force _api_tmp }
-      if (Test-Path backend.zip) { Remove-Item backend.zip }
+      if (Test-Path backend.zip) { Remove-Item -Force backend.zip }
       git clone https://github.com/tomassantos21/ESTufa-API.git _api_tmp
-      Push-Location _api_tmp/ESTufa-API
+      Push-Location _api_tmp
       npm install --omit=dev
       Pop-Location
-      Compress-Archive -Path '_api_tmp/ESTufa-API/*' -DestinationPath backend.zip -Force
+      Get-ChildItem -Path _api_tmp -Recurse | Compress-Archive -DestinationPath backend.zip -Force
       az functionapp deploy `
         --resource-group ${azurerm_resource_group.rg.name} `
         --name ${azurerm_function_app_flex_consumption.backend.name} `
         --src-path backend.zip `
         --type zip
       Remove-Item -Recurse -Force _api_tmp
-      Remove-Item backend.zip
+      Remove-Item -Force backend.zip
     PWSH
   }
 
