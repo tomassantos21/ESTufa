@@ -6,6 +6,11 @@ dist/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+*.tfvars
+*.tfvars.json
 
 # Variáveis de ambiente (Segurança)
 .env
+.env.*
+.env.local
+.env.production

@@ -4,6 +4,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -211,3 +219,31 @@ resource "null_resource" "sync_frontend" {
   depends_on = [azurerm_app_service_source_control.fe_deploy]
 }
 
+# 10. Deploy Backend Code (clone repo, install deps, zip, upload)
+resource "null_resource" "deploy_backend" {
+  triggers = {
+    function_app_id = azurerm_function_app_flex_consumption.backend.id
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["PowerShell", "-Command"]
+    command     = <<-PWSH
+      if (Test-Path _api_tmp) { Remove-Item -Recurse -Force _api_tmp }
+      if (Test-Path backend.zip) { Remove-Item backend.zip }
+      git clone https://github.com/tomassantos21/ESTufa-API.git _api_tmp
+      Push-Location _api_tmp/ESTufa-API
+      npm install --omit=dev
+      Pop-Location
+      Compress-Archive -Path '_api_tmp/ESTufa-API/*' -DestinationPath backend.zip -Force
+      az functionapp deploy `
+        --resource-group ${azurerm_resource_group.rg.name} `
+        --name ${azurerm_function_app_flex_consumption.backend.name} `
+        --src-path backend.zip `
+        --type zip
+      Remove-Item -Recurse -Force _api_tmp
+      Remove-Item backend.zip
+    PWSH
+  }
+
+  depends_on = [azurerm_function_app_flex_consumption.backend]
+}
