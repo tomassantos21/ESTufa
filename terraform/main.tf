@@ -105,11 +105,11 @@ resource "azurerm_storage_container" "func_deploy" {
 
 # 4. Azure AI Services (Computer Vision / Custom Vision)
 resource "azurerm_cognitive_account" "ai" {
-  name                = "estufa-ia-${random_string.sufixo.result}-v4"
+  name                = "estufa-ia-${random_string.sufixo.result}-v5"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "ComputerVision"
-  sku_name            = "S1" # <--- MUDAR DE "F0" PARA "S1"
+  sku_name            = "S1"
 }
 
 # 5. App Service Plan (Linux)
