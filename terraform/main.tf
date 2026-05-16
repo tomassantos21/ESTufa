@@ -88,6 +88,12 @@ resource "azurerm_storage_container" "fotos" {
   container_access_type = "blob"
 }
 
+resource "azurerm_storage_container" "func_deploy" {
+  name                  = "func-deploy"
+  storage_account_name  = azurerm_storage_account.storage.name
+  container_access_type = "private"
+}
+
 
 # 4. Azure AI Services (Computer Vision / Custom Vision)
 resource "azurerm_cognitive_account" "ai" {
@@ -135,47 +141,41 @@ resource "azurerm_app_service_source_control" "fe_deploy" {
   use_manual_integration = true
 }
 
-# 7. Back-end (Azure Functions Serverless - Linux Consumption)
-resource "azurerm_service_plan" "func_plan" {
-  name                = "estufa-func-plan"
+# 7. Back-end (Azure Functions Serverless - Flex Consumption)
+resource "azurerm_service_plan" "flex_plan" {
+  name                = "estufa-flex-plan"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   os_type             = "Linux"
-  sku_name            = "Y1"
+  sku_name            = "FC1"
 }
 
-resource "azurerm_linux_function_app" "backend" {
-  name                       = "estufa-backend-${random_string.sufixo.result}"
-  resource_group_name        = azurerm_resource_group.rg.name
-  location                   = azurerm_resource_group.rg.location
-  service_plan_id            = azurerm_service_plan.func_plan.id
-  storage_account_name       = azurerm_storage_account.storage.name
-  storage_account_access_key = azurerm_storage_account.storage.primary_access_key
+resource "azurerm_function_app_flex_consumption" "backend" {
+  name                = "estufa-backend-${random_string.sufixo.result}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  service_plan_id     = azurerm_service_plan.flex_plan.id
+
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.func_deploy.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.storage.primary_access_key
+
+  runtime_name    = "node"
+  runtime_version = "22"
 
   app_settings = {
-    "COSMOS_DB_CONNECTION"           = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
-    "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
-    "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
-    "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
-    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
-    "ENABLE_ORYX_BUILD"              = "true"
-    "FUNCTIONS_WORKER_RUNTIME"       = "node"
-    "FUNCTIONS_EXTENSION_VERSION"    = "~4"
-    "AzureWebJobsFeatureFlags"       = "EnableWorkerIndexing"
+    "COSMOS_DB_CONNECTION"  = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
+    "BLOB_CONNECTION_STRING" = azurerm_storage_account.storage.primary_connection_string
+    "AI_SERVICE_KEY"        = azurerm_cognitive_account.ai.primary_access_key
+    "AI_SERVICE_ENDPOINT"   = azurerm_cognitive_account.ai.endpoint
   }
 
   site_config {
-    application_stack { node_version = "22" }
-    cors { allowed_origins = ["*"] } # Em produção, restringir ao domínio do frontend
+    cors {
+      allowed_origins = ["*"] # Em produção, restringir ao domínio do frontend
+    }
   }
-}
-
-# Ligação ao Repo do Back-end (Functions)
-resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id                 = azurerm_linux_function_app.backend.id
-  repo_url               = "https://github.com/tomassantos21/ESTufa-API"
-  branch                 = "main"
-  use_manual_integration = true
 }
 
 # 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
