@@ -4,7 +4,10 @@ dist/
 # Ficheiros gigantes e sensíveis do Terraform
 .terraform/
 *.tfstate
+*.tfstate.*
 *.tfstate.backup
+terraform/**/*.tfstate
+terraform/**/*.tfstate.*
 .terraform.lock.hcl
 *.tfvars
 *.tfvars.json
