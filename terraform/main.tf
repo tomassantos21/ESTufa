@@ -211,13 +211,3 @@ resource "null_resource" "sync_frontend" {
   depends_on = [azurerm_app_service_source_control.fe_deploy]
 }
 
-resource "null_resource" "sync_backend" {
-  triggers = {
-    repo_url = azurerm_app_service_source_control.be_deploy.repo_url
-  }
-
-  provisioner "local-exec" {
-    command = "az functionapp deployment source sync --name ${azurerm_linux_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
-  }
-  depends_on = [azurerm_app_service_source_control.be_deploy]
-}

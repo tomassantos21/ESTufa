@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 // Types mimicking our eventual CosmosDB schema
 export interface User {
@@ -156,7 +156,7 @@ export function AzureProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const getGallery = async (username: string): Promise<PlantResult[]> => {
+  const getGallery = useCallback(async (username: string): Promise<PlantResult[]> => {
     setIsLoading(true);
     try {
       const baseUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:7071';
@@ -170,7 +170,7 @@ export function AzureProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return [];
     }
-  };
+  }, []);
 
   // Real: Upload to Azure Blob Storage via SAS Token
   const uploadImage = async (file: File): Promise<string> => {
