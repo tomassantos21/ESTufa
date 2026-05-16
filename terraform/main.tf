@@ -149,41 +149,47 @@ resource "azurerm_app_service_source_control" "fe_deploy" {
   use_manual_integration = true
 }
 
-# 7. Back-end (Azure Functions Serverless - Flex Consumption)
-resource "azurerm_service_plan" "flex_plan" {
-  name                = "estufa-flex-plan"
+# 7. Back-end (Azure Functions Serverless - Windows Consumption)
+resource "azurerm_service_plan" "func_plan" {
+  name                = "estufa-func-plan"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  os_type             = "Linux"
-  sku_name            = "FC1"
+  os_type             = "Windows"
+  sku_name            = "Y1"
 }
 
-resource "azurerm_function_app_flex_consumption" "backend" {
-  name                = "estufa-backend-${random_string.sufixo.result}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  service_plan_id     = azurerm_service_plan.flex_plan.id
-
-  storage_container_type      = "blobContainer"
-  storage_container_endpoint  = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.func_deploy.name}"
-  storage_authentication_type = "StorageAccountConnectionString"
-  storage_access_key          = azurerm_storage_account.storage.primary_access_key
-
-  runtime_name    = "node"
-  runtime_version = "22"
+resource "azurerm_windows_function_app" "backend" {
+  name                       = "estufa-backend-${random_string.sufixo.result}"
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  service_plan_id            = azurerm_service_plan.func_plan.id
+  storage_account_name       = azurerm_storage_account.storage.name
+  storage_account_access_key = azurerm_storage_account.storage.primary_access_key
 
   app_settings = {
-    "COSMOS_DB_CONNECTION"  = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
-    "BLOB_CONNECTION_STRING" = azurerm_storage_account.storage.primary_connection_string
-    "AI_SERVICE_KEY"        = azurerm_cognitive_account.ai.primary_access_key
-    "AI_SERVICE_ENDPOINT"   = azurerm_cognitive_account.ai.endpoint
+    "COSMOS_DB_CONNECTION"           = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
+    "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
+    "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
+    "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
+    "WEBSITE_NODE_DEFAULT_VERSION"   = "~22"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+    "FUNCTIONS_WORKER_RUNTIME"       = "node"
+    "FUNCTIONS_EXTENSION_VERSION"    = "~4"
+    "AzureWebJobsFeatureFlags"       = "EnableWorkerIndexing"
   }
 
   site_config {
-    cors {
-      allowed_origins = ["*"] # Em produção, restringir ao domínio do frontend
-    }
+    application_stack { node_version = "~22" }
+    cors { allowed_origins = ["*"] }
   }
+}
+
+# Ligação ao Repo do Back-end (Functions)
+resource "azurerm_app_service_source_control" "be_deploy" {
+  app_id                 = azurerm_windows_function_app.backend.id
+  repo_url               = "https://github.com/tomassantos21/ESTufa-API"
+  branch                 = "main"
+  use_manual_integration = true
 }
 
 # 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
@@ -219,32 +225,13 @@ resource "null_resource" "sync_frontend" {
   depends_on = [azurerm_app_service_source_control.fe_deploy]
 }
 
-# 10. Deploy Backend Code (clone repo, install deps, zip, upload)
-resource "null_resource" "deploy_backend" {
+resource "null_resource" "sync_backend" {
   triggers = {
-    function_app_id = azurerm_function_app_flex_consumption.backend.id
+    repo_url = azurerm_app_service_source_control.be_deploy.repo_url
   }
 
   provisioner "local-exec" {
-    interpreter = ["PowerShell", "-Command"]
-    command     = <<-PWSH
-      $ErrorActionPreference = 'Stop'
-      if (Test-Path _api_tmp) { Remove-Item -Recurse -Force _api_tmp }
-      if (Test-Path backend.zip) { Remove-Item -Force backend.zip }
-      git clone https://github.com/tomassantos21/ESTufa-API.git _api_tmp
-      Push-Location _api_tmp
-      npm install --omit=dev
-      Pop-Location
-      Get-ChildItem -Path _api_tmp -Recurse | Compress-Archive -DestinationPath backend.zip -Force
-      az functionapp deploy `
-        --resource-group ${azurerm_resource_group.rg.name} `
-        --name ${azurerm_function_app_flex_consumption.backend.name} `
-        --src-path backend.zip `
-        --type zip
-      Remove-Item -Recurse -Force _api_tmp
-      Remove-Item -Force backend.zip
-    PWSH
+    command = "az functionapp deployment source sync --name ${azurerm_windows_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
   }
-
-  depends_on = [azurerm_function_app_flex_consumption.backend]
+  depends_on = [azurerm_app_service_source_control.be_deploy]
 }
