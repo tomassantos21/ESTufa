@@ -135,16 +135,16 @@ resource "azurerm_app_service_source_control" "fe_deploy" {
   use_manual_integration = true
 }
 
-# 7. Back-end (Azure Functions Serverless - Windows Consumption)
+# 7. Back-end (Azure Functions Serverless - Linux Consumption)
 resource "azurerm_service_plan" "func_plan" {
   name                = "estufa-func-plan"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  os_type             = "Windows"
+  os_type             = "Linux"
   sku_name            = "Y1"
 }
 
-resource "azurerm_windows_function_app" "backend" {
+resource "azurerm_linux_function_app" "backend" {
   name                       = "estufa-backend-${random_string.sufixo.result}"
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
@@ -157,7 +157,6 @@ resource "azurerm_windows_function_app" "backend" {
     "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
     "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
     "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
-    "WEBSITE_NODE_DEFAULT_VERSION"   = "~22"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
     "ENABLE_ORYX_BUILD"              = "true"
     "FUNCTIONS_WORKER_RUNTIME"       = "node"
@@ -166,14 +165,14 @@ resource "azurerm_windows_function_app" "backend" {
   }
 
   site_config {
-    application_stack { node_version = "~22" }
+    application_stack { node_version = "22" }
     cors { allowed_origins = ["*"] } # Em produção, restringir ao domínio do frontend
   }
 }
 
 # Ligação ao Repo do Back-end (Functions)
 resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id                 = azurerm_windows_function_app.backend.id
+  app_id                 = azurerm_linux_function_app.backend.id
   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
   branch                 = "main"
   use_manual_integration = true
@@ -218,7 +217,7 @@ resource "null_resource" "sync_backend" {
   }
 
   provisioner "local-exec" {
-    command = "az functionapp deployment source sync --name ${azurerm_windows_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
+    command = "az functionapp deployment source sync --name ${azurerm_linux_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
   }
   depends_on = [azurerm_app_service_source_control.be_deploy]
 }
