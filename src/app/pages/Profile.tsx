@@ -7,14 +7,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ProfileEditor } from '../components/ProfileEditor';
 
 export function Profile() {
-  const { user, logout, feed } = useAzure();
+  const { user, logout, getGallery } = useAzure();
   const [isEditing, setIsEditing] = useState(false);
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (user) {
+      getGallery(user.username).then(setUserPosts);
+    }
+  }, [user, getGallery]);
 
   if (!user) {
     return <Login />;
   }
-
-  const userPosts = feed.filter(post => post.userId === user.id || post.username === user.username);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">

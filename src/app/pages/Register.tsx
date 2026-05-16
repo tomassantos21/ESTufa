@@ -38,7 +38,7 @@ export function Register() {
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
   const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isPasswordValid) {
@@ -52,12 +52,16 @@ export function Register() {
     }
 
     if (formData.username.trim()) {
-      register(formData.username, formData.password, {
+      const success = await register(formData.username, formData.password, {
         fullName: formData.fullName,
         email: formData.email,
         bio: formData.bio,
       });
-      navigate('/scan');
+      if (success) {
+        navigate('/scan');
+      } else {
+        alert('Falha ao registar. O nome de utilizador já pode existir ou ocorreu um erro.');
+      }
     }
   };
 

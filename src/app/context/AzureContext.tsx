@@ -25,12 +25,13 @@ export interface PlantResult {
 interface AzureContextType {
   user: User | null;
   feed: PlantResult[];
-  login: (username: string, password: string) => boolean;
-  register: (username: string, password: string, additionalData?: Partial<User>) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
+  register: (username: string, password: string, additionalData?: Partial<User>) => Promise<boolean>;
   logout: () => void;
-  updateUser: (updatedData: Partial<User>) => void;
+  updateUser: (updatedData: Partial<User>) => Promise<boolean>;
   uploadImage: (file: File) => Promise<string>;
   detectPlant: (imageUrl: string) => Promise<PlantResult>;
+  getGallery: (username: string) => Promise<PlantResult[]>;
   isLoading: boolean;
 }
 
@@ -64,44 +65,62 @@ export function AzureProvider({ children }: { children: ReactNode }) {
     fetchFeed();
   }, []);
 
-  const register = (username: string, password: string, additionalData?: Partial<User>): boolean => {
-    // Check if user already exists
-    const users = JSON.parse(localStorage.getItem('estufa_users') || '{}');
-    if (users[username]) {
-      return false; // User already exists
+  const register = async (username: string, password: string, additionalData?: Partial<User>): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:7071';
+      const res = await fetch(`${baseUrl}/api/registerUser`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          password,
+          ...additionalData
+        })
+      });
+
+      if (!res.ok) {
+        setIsLoading(false);
+        return false;
+      }
+
+      const newUser = await res.json();
+      setUser(newUser);
+      localStorage.setItem('estufa_user', JSON.stringify(newUser));
+      setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+      return false;
     }
-
-    // Create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      username,
-      fullName: additionalData?.fullName || username,
-      email: additionalData?.email || `${username.toLowerCase().replace(/\s+/g, '.')}@exemplo.com`,
-      bio: additionalData?.bio || 'Entusiasta de plantas em aprendizagem.',
-    };
-
-    // Store user credentials (in a real app, this would be hashed and stored securely)
-    users[username] = { password, user: newUser };
-    localStorage.setItem('estufa_users', JSON.stringify(users));
-
-    // Log the user in
-    setUser(newUser);
-    localStorage.setItem('estufa_user', JSON.stringify(newUser));
-    return true;
   };
 
-  const login = (username: string, password: string): boolean => {
-    // In a real app, this would call an Azure Function or AD B2C
-    const users = JSON.parse(localStorage.getItem('estufa_users') || '{}');
+  const login = async (username: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:7071';
+      const res = await fetch(`${baseUrl}/api/loginUser`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
 
-    if (!users[username] || users[username].password !== password) {
-      return false; // Invalid credentials
+      if (!res.ok) {
+        setIsLoading(false);
+        return false;
+      }
+
+      const loggedInUser = await res.json();
+      setUser(loggedInUser);
+      localStorage.setItem('estufa_user', JSON.stringify(loggedInUser));
+      setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+      return false;
     }
-
-    const user = users[username].user;
-    setUser(user);
-    localStorage.setItem('estufa_user', JSON.stringify(user));
-    return true;
   };
 
   const logout = () => {
@@ -109,11 +128,48 @@ export function AzureProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('estufa_user');
   };
 
-  const updateUser = (updatedData: Partial<User>) => {
-    if (!user) return;
-    const updatedUser = { ...user, ...updatedData };
-    setUser(updatedUser);
-    localStorage.setItem('estufa_user', JSON.stringify(updatedUser));
+  const updateUser = async (updatedData: Partial<User>): Promise<boolean> => {
+    if (!user) return false;
+    setIsLoading(true);
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:7071';
+      const res = await fetch(`${baseUrl}/api/updateUser`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, ...updatedData })
+      });
+
+      if (!res.ok) {
+        setIsLoading(false);
+        return false;
+      }
+
+      const updatedUser = await res.json();
+      setUser(updatedUser);
+      localStorage.setItem('estufa_user', JSON.stringify(updatedUser));
+      setIsLoading(false);
+      return true;
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+      return false;
+    }
+  };
+
+  const getGallery = async (username: string): Promise<PlantResult[]> => {
+    setIsLoading(true);
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:7071';
+      const res = await fetch(`${baseUrl}/api/getGallery?username=${encodeURIComponent(username)}`);
+      if (!res.ok) throw new Error("Failed to fetch gallery");
+      const data = await res.json();
+      setIsLoading(false);
+      return data;
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+      return [];
+    }
   };
 
   // Real: Upload to Azure Blob Storage via SAS Token
@@ -175,7 +231,7 @@ export function AzureProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AzureContext.Provider value={{ user, feed, login, register, logout, updateUser, uploadImage, detectPlant, isLoading }}>
+    <AzureContext.Provider value={{ user, feed, login, register, logout, updateUser, uploadImage, detectPlant, getGallery, isLoading }}>
       {children}
     </AzureContext.Provider>
   );

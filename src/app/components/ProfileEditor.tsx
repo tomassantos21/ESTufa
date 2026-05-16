@@ -23,10 +23,14 @@ export function ProfileEditor({ onClose }: ProfileEditorProps) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser(formData);
-    onClose();
+    const success = await updateUser(formData);
+    if (success) {
+      onClose();
+    } else {
+      alert("Falha ao atualizar perfil.");
+    }
   };
 
   return (

@@ -50,9 +50,17 @@ resource "azurerm_cosmosdb_sql_container" "plants" {
   resource_group_name   = azurerm_resource_group.rg.name
   account_name          = azurerm_cosmosdb_account.cosmos.name
   database_name         = azurerm_cosmosdb_sql_database.db.name
-  partition_key_path    = "/id"
+  partition_key_paths   = ["/id"]
   partition_key_version = 1
-  throughput            = 400
+}
+
+resource "azurerm_cosmosdb_sql_container" "users" {
+  name                  = "users"
+  resource_group_name   = azurerm_resource_group.rg.name
+  account_name          = azurerm_cosmosdb_account.cosmos.name
+  database_name         = azurerm_cosmosdb_sql_database.db.name
+  partition_key_paths   = ["/id"]
+  partition_key_version = 1
 }
 
 # 3. Storage Account (Blob Storage para fotos)
@@ -114,7 +122,8 @@ resource "azurerm_linux_web_app" "frontend" {
   }
 
   app_settings = {
-    "VITE_API_URL" = "https://estufa-backend-${random_string.sufixo.result}.azurewebsites.net"
+    "VITE_API_URL"                   = "https://estufa-backend-${random_string.sufixo.result}.azurewebsites.net"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
   }
 }
 
@@ -126,31 +135,41 @@ resource "azurerm_app_service_source_control" "fe_deploy" {
   use_manual_integration = true
 }
 
-# 7. Back-end (Azure Functions Serverless)
-resource "azurerm_linux_function_app" "backend" {
+# 7. Back-end (Azure Functions Serverless - Windows Consumption)
+resource "azurerm_service_plan" "func_plan" {
+  name                = "estufa-func-plan"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Windows"
+  sku_name            = "Y1"
+}
+
+resource "azurerm_windows_function_app" "backend" {
   name                       = "estufa-backend-${random_string.sufixo.result}"
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
-  service_plan_id            = azurerm_service_plan.app_plan.id
+  service_plan_id            = azurerm_service_plan.func_plan.id
   storage_account_name       = azurerm_storage_account.storage.name
   storage_account_access_key = azurerm_storage_account.storage.primary_access_key
 
   app_settings = {
-    "COSMOS_DB_CONNECTION"   = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
-    "BLOB_CONNECTION_STRING" = azurerm_storage_account.storage.primary_connection_string
-    "AI_SERVICE_KEY"         = azurerm_cognitive_account.ai.primary_access_key
-    "AI_SERVICE_ENDPOINT"    = azurerm_cognitive_account.ai.endpoint
+    "COSMOS_DB_CONNECTION"           = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
+    "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
+    "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
+    "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
+    "WEBSITE_NODE_DEFAULT_VERSION"   = "~20"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
   }
 
   site_config {
-    application_stack { node_version = "20" }
+    application_stack { node_version = "~20" }
     cors { allowed_origins = ["*"] } # Em produção, restringir ao domínio do frontend
   }
 }
 
 # Ligação ao Repo do Back-end (Functions)
 resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id                 = azurerm_linux_function_app.backend.id
+  app_id                 = azurerm_windows_function_app.backend.id
   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
   branch                 = "main"
   use_manual_integration = true
