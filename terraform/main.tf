@@ -91,7 +91,7 @@ resource "azurerm_storage_container" "fotos" {
 
 # 4. Azure AI Services (Computer Vision / Custom Vision)
 resource "azurerm_cognitive_account" "ai" {
-  name                = "estufa-ia-${random_string.sufixo.result}-v2"
+  name                = "estufa-ia-${random_string.sufixo.result}-v3"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "ComputerVision" 
