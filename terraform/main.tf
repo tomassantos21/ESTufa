@@ -91,7 +91,7 @@ resource "azurerm_storage_container" "fotos" {
 
 # 4. Azure AI Services (Computer Vision / Custom Vision)
 resource "azurerm_cognitive_account" "ai" {
-  name                = "estufa-ia-${random_string.sufixo.result}"
+  name                = "estufa-ia-${random_string.sufixo.result}-v2"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "ComputerVision" 
@@ -116,7 +116,7 @@ resource "azurerm_linux_web_app" "frontend" {
 
   site_config {
     application_stack {
-      node_version = "20-lts"
+      node_version = "22-lts"
     }
     app_command_line = "pm2 serve /home/site/wwwroot/dist --no-daemon --spa"
   }
@@ -157,12 +157,14 @@ resource "azurerm_windows_function_app" "backend" {
     "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
     "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
     "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
-    "WEBSITE_NODE_DEFAULT_VERSION"   = "~20"
+    "WEBSITE_NODE_DEFAULT_VERSION"   = "~22"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+    "FUNCTIONS_WORKER_RUNTIME"       = "node"
+    "FUNCTIONS_EXTENSION_VERSION"    = "~4"
   }
 
   site_config {
-    application_stack { node_version = "~20" }
+    application_stack { node_version = "~22" }
     cors { allowed_origins = ["*"] } # Em produção, restringir ao domínio do frontend
   }
 }
