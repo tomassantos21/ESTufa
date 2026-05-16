@@ -158,23 +158,16 @@ resource "azurerm_windows_function_app" "backend" {
     "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
     "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
     "WEBSITE_NODE_DEFAULT_VERSION"   = "~22"
-    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+    "WEBSITE_RUN_FROM_PACKAGE"       = "1"
     "FUNCTIONS_WORKER_RUNTIME"       = "node"
     "FUNCTIONS_EXTENSION_VERSION"    = "~4"
+    "AzureWebJobsFeatureFlags"       = "EnableWorkerIndexing"
   }
 
   site_config {
     application_stack { node_version = "~22" }
     cors { allowed_origins = ["*"] } # Em produção, restringir ao domínio do frontend
   }
-}
-
-# Ligação ao Repo do Back-end (Functions)
-resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id                 = azurerm_windows_function_app.backend.id
-  repo_url               = "https://github.com/tomassantos21/ESTufa-API"
-  branch                 = "main"
-  use_manual_integration = true
 }
 
 # 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
