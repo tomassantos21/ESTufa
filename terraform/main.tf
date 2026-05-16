@@ -91,10 +91,10 @@ resource "azurerm_storage_container" "fotos" {
 
 # 4. Azure AI Services (Computer Vision / Custom Vision)
 resource "azurerm_cognitive_account" "ai" {
-  name                = "estufa-ia-${random_string.sufixo.result}-v3"
+  name                = "estufa-ia-${random_string.sufixo.result}-v4"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  kind                = "ComputerVision" 
+  kind                = "ComputerVision"
   sku_name            = "S1" # <--- MUDAR DE "F0" PARA "S1"
 }
 
@@ -205,7 +205,7 @@ resource "null_resource" "sync_frontend" {
   triggers = {
     repo_url = azurerm_app_service_source_control.fe_deploy.repo_url
   }
-  
+
   provisioner "local-exec" {
     command = "az webapp deployment source sync --name ${azurerm_linux_web_app.frontend.name} --resource-group ${azurerm_resource_group.rg.name}"
   }
@@ -216,7 +216,7 @@ resource "null_resource" "sync_backend" {
   triggers = {
     repo_url = azurerm_app_service_source_control.be_deploy.repo_url
   }
-  
+
   provisioner "local-exec" {
     command = "az functionapp deployment source sync --name ${azurerm_windows_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
   }
