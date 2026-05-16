@@ -39,6 +39,22 @@ resource "azurerm_cosmosdb_account" "cosmos" {
   }
 }
 
+resource "azurerm_cosmosdb_sql_database" "db" {
+  name                = "estufa-db"
+  resource_group_name = azurerm_resource_group.rg.name
+  account_name        = azurerm_cosmosdb_account.cosmos.name
+}
+
+resource "azurerm_cosmosdb_sql_container" "plants" {
+  name                  = "plants"
+  resource_group_name   = azurerm_resource_group.rg.name
+  account_name          = azurerm_cosmosdb_account.cosmos.name
+  database_name         = azurerm_cosmosdb_sql_database.db.name
+  partition_key_path    = "/id"
+  partition_key_version = 1
+  throughput            = 400
+}
+
 # 3. Storage Account (Blob Storage para fotos)
 resource "azurerm_storage_account" "storage" {
   name                     = "saestufa${random_string.sufixo.result}"
@@ -46,6 +62,16 @@ resource "azurerm_storage_account" "storage" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+
+  blob_properties {
+    cors_rule {
+      allowed_headers    = ["*"]
+      allowed_methods    = ["GET", "OPTIONS", "PUT", "POST"]
+      allowed_origins    = ["*"]
+      exposed_headers    = ["*"]
+      max_age_in_seconds = 3600
+    }
+  }
 }
 
 resource "azurerm_storage_container" "fotos" {
@@ -73,7 +99,7 @@ resource "azurerm_service_plan" "app_plan" {
   sku_name            = "B1"
 }
 
-# 6. Front-end (Web App para Containers)
+# 6. Front-end (Web App Nativo Node.js para build automático)
 resource "azurerm_linux_web_app" "frontend" {
   name                = "estufa-frontend-${random_string.sufixo.result}"
   resource_group_name = azurerm_resource_group.rg.name
@@ -82,9 +108,13 @@ resource "azurerm_linux_web_app" "frontend" {
 
   site_config {
     application_stack {
-      docker_image_name = "nginx:latest" # O Azure atualizará via GitHub
-      docker_registry_url = "https://index.docker.io/v1/"
+      node_version = "20-lts"
     }
+    app_command_line = "pm2 serve /home/site/wwwroot/dist --no-daemon --spa"
+  }
+
+  app_settings = {
+    "VITE_API_URL" = "https://estufa-backend-${random_string.sufixo.result}.azurewebsites.net"
   }
 }
 
@@ -106,10 +136,10 @@ resource "azurerm_linux_function_app" "backend" {
   storage_account_access_key = azurerm_storage_account.storage.primary_access_key
 
   app_settings = {
-    "COSMOS_DB_CONNECTION" = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
-    "BLOB_STORAGE_URL"     = azurerm_storage_account.storage.primary_blob_endpoint
-    "AI_SERVICE_KEY"       = azurerm_cognitive_account.ai.primary_access_key
-    "AI_SERVICE_ENDPOINT"  = azurerm_cognitive_account.ai.endpoint
+    "COSMOS_DB_CONNECTION"   = azurerm_cosmosdb_account.cosmos.primary_sql_connection_string
+    "BLOB_CONNECTION_STRING" = azurerm_storage_account.storage.primary_connection_string
+    "AI_SERVICE_KEY"         = azurerm_cognitive_account.ai.primary_access_key
+    "AI_SERVICE_ENDPOINT"    = azurerm_cognitive_account.ai.endpoint
   }
 
   site_config {
@@ -124,4 +154,25 @@ resource "azurerm_app_service_source_control" "be_deploy" {
   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
   branch                 = "main"
   use_manual_integration = true
+}
+
+# 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
+resource "azurerm_container_group" "cache" {
+  name                = "estufa-cache-${random_string.sufixo.result}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  ip_address_type     = "Public"
+  dns_name_label      = "estufa-cache-${random_string.sufixo.result}"
+  os_type             = "Linux"
+
+  container {
+    name   = "redis"
+    image  = "redis:alpine"
+    cpu    = "0.5"
+    memory = "1.5"
+    ports {
+      port     = 6379
+      protocol = "TCP"
+    }
+  }
 }
