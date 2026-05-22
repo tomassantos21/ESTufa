@@ -67,44 +67,60 @@ A arquitetura tecnológica da solução assenta em serviços modernos e totalmen
 
 ---
 
-## 💻 Executar o Projeto Localmente
+## ☁️ Como Implementar e Executar na Nuvem (Microsoft Azure)
 
-### Front-end SPA
-1.  Instale as dependências do cliente:
-    ```bash
-    npm install
-    ```
-2.  Inicie o servidor de desenvolvimento local:
-    ```bash
-    npm run dev
-    ```
-    A aplicação estará disponível em `http://localhost:5173`.
+Esta plataforma foi desenhada especificamente para correr de forma nativa na nuvem Microsoft Azure. O front-end (React SPA) é servido por um **Azure Linux Web App** nativo e integrado com um pipeline automatizado de CI/CD via GitHub Actions.
 
-### Back-end API
-Consulte o repositório [ESTufa-API](https://github.com/tomassantos21/ESTufa-API) para obter instruções detalhadas sobre a execução local das Azure Functions e a sua integração com os emuladores locais ou serviços na nuvem.
+### Pré-requisitos
+*   Uma conta ativa na **Microsoft Azure** com subscrição válida.
+*   [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) instalada e autenticada (`az login`).
+*   [Terraform](https://developer.hashicorp.com/terraform/downloads) instalado para automatizar a criação da infraestrutura.
+*   Repositórios GitHub configurados para ativação automática do pipeline CI/CD.
 
 ---
 
-## ☁️ Implementação da Infraestrutura com Terraform
-
-Os ficheiros de configuração na pasta `/terraform` permitem criar de raiz ou atualizar toda a infraestrutura Azure:
+### Passo 1: Criar a Infraestrutura na Nuvem (Terraform)
+Os ficheiros na pasta `/terraform` configuram e ligam automaticamente a base de dados, a storage account, o serviço de IA, a cache Redis, a Web App de front-end e o backend de Azure Functions.
 
 1.  Aceda à pasta do Terraform:
     ```bash
     cd terraform
     ```
-2.  Inicialize o Terraform e descarregue os providers necessários:
+2.  Inicialize o Terraform para descarregar o provider da Azure:
     ```bash
     terraform init
     ```
-3.  Visualize o plano de execução das alterações:
+3.  Visualize as alterações de infraestrutura planeadas:
     ```bash
     terraform plan
     ```
-4.  Aplique as alterações na sua subscrição Azure:
+4.  Crie a infraestrutura na nuvem:
     ```bash
     terraform apply -auto-approve
     ```
+    *Isto cria a Web App Linux do Front-end (ex: `estufa-frontend-jge55d`) e configura a variável `VITE_API_URL` para apontar de forma imediata para o endpoint da Function App.*
+
+---
+
+### Passo 2: Publicação e Execução Automática (CI/CD)
+O front-end está ligado à Azure Web App utilizando pipelines do **GitHub Actions** (`.github/workflows`) para efetuar a compilação de produção e a publicação automática no Azure App Service a cada push na branch `main`:
+
+1.  O pipeline do GitHub Action é acionado ao efetuar commit e push para o repositório principal:
+    ```bash
+    git add .
+    git commit -m "Deploy production client"
+    git push origin main
+    ```
+2.  O GitHub Actions encarrega-se de:
+    *   Descarregar o código e configurar a versão estável do Node.js (v22).
+    *   Resolver e descarregar as dependências de produção (`npm install`).
+    *   Compilar os recursos estáticos do React com Vite (`npm run build`).
+    *   Enviar o pacote final compilado diretamente para o Azure Linux Web App utilizando as credenciais seguras de publicação.
+3.  O Azure App Service recebe o pacote final no diretório `/home/site/wwwroot/dist` e executa o servidor de ficheiros PM2 em modo SPA:
+    ```bash
+    pm2 serve /home/site/wwwroot/dist --no-daemon --spa
+    ```
+    *O front-end fica imediatamente ativo e disponível de forma segura através do URL público disponibilizado pelo App Service (ex: `https://estufa-frontend-jge55d.azurewebsites.net`).*
 
 ---
 
