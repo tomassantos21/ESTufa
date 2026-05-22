@@ -177,6 +177,7 @@ resource "azurerm_windows_function_app" "backend" {
     "FUNCTIONS_WORKER_RUNTIME"       = "node"
     "FUNCTIONS_EXTENSION_VERSION"    = "~4"
     "AzureWebJobsFeatureFlags"       = "EnableWorkerIndexing"
+    "WEBSITE_RUN_FROM_PACKAGE"       = "1"
   }
 
   site_config {
@@ -186,12 +187,12 @@ resource "azurerm_windows_function_app" "backend" {
 }
 
 # Ligação ao Repo do Back-end (Functions)
-resource "azurerm_app_service_source_control" "be_deploy" {
-  app_id                 = azurerm_windows_function_app.backend.id
-  repo_url               = "https://github.com/tomassantos21/ESTufa-API"
-  branch                 = "main"
-  use_manual_integration = true
-}
+# resource "azurerm_app_service_source_control" "be_deploy" {
+#   app_id                 = azurerm_windows_function_app.backend.id
+#   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
+#   branch                 = "main"
+#   use_manual_integration = true
+# }
 
 # 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
 resource "azurerm_container_group" "cache" {
@@ -226,13 +227,13 @@ resource "null_resource" "sync_frontend" {
   depends_on = [azurerm_app_service_source_control.fe_deploy]
 }
 
-resource "null_resource" "sync_backend" {
-  triggers = {
-    repo_url = azurerm_app_service_source_control.be_deploy.repo_url
-  }
-
-  provisioner "local-exec" {
-    command = "az functionapp deployment source sync --name ${azurerm_windows_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
-  }
-  depends_on = [azurerm_app_service_source_control.be_deploy]
-}
+# resource "null_resource" "sync_backend" {
+#   triggers = {
+#     repo_url = azurerm_app_service_source_control.be_deploy.repo_url
+#   }
+# 
+#   provisioner "local-exec" {
+#     command = "az functionapp deployment source sync --name ${azurerm_windows_function_app.backend.name} --resource-group ${azurerm_resource_group.rg.name}"
+#   }
+#   depends_on = [azurerm_app_service_source_control.be_deploy]
+# }
