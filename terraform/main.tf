@@ -171,6 +171,7 @@ resource "azurerm_windows_function_app" "backend" {
     "BLOB_CONNECTION_STRING"         = azurerm_storage_account.storage.primary_connection_string
     "AI_SERVICE_KEY"                 = azurerm_cognitive_account.ai.primary_access_key
     "AI_SERVICE_ENDPOINT"            = azurerm_cognitive_account.ai.endpoint
+    "REDIS_URL"                      = "redis://${azurerm_container_group.cache.fqdn}:6379"
     "WEBSITE_NODE_DEFAULT_VERSION"   = "~22"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
     "FUNCTIONS_WORKER_RUNTIME"       = "node"
