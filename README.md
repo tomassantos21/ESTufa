@@ -1,6 +1,6 @@
 # ESTufa 🌿
 
-**ESTufa** é uma aplicação web baseada na plataforma Microsoft Azure, dedicada à identificação de espécies botânicas com recurso à inteligência artificial. Desenvolvida para ser uma ferramenta indispensável no cuidado e conhecimento da biodiversidade botânica.
+**ESTufa** é uma aplicação web de última geração baseada na plataforma Microsoft Azure, dedicada à identificação inteligente de espécies botânicas através de inteligência artificial. Desenvolvida para ser uma ferramenta indispensável no cuidado, catalogação e partilha de conhecimento sobre biodiversidade botânica.
 
 <br>
 
@@ -8,16 +8,36 @@
 
 <br>
 
+---
+
 ## 📖 Sobre o Projeto
 A ferramenta permite aos utilizadores submeter fotografias de plantas para obter, de forma imediata, a sua identificação científica e respetivas informações de cultivo. Além da componente analítica, a plataforma incentiva a vertente social e a partilha de conhecimento através de um feed comunitário de descobertas e da criação de coleções digitais que funcionam como herbários pessoais privados.
 
-Este projeto foi desenvolvido no âmbito da unidade curricular Computação em Nuvem da licenciatura em Engenharia Informática, na Escola Superior de Tecnologia do Instituto Politécnico de Castelo Branco.
+Este projeto foi desenvolvido no âmbito da unidade curricular **Computação em Nuvem** da licenciatura em Engenharia Informática, na Escola Superior de Tecnologia do **Instituto Politécnico de Castelo Branco (IPCB)**.
 
-## ✨ Funcionalidades
-* **Autenticação e Gestão de Perfil:** Sistema de registo e acesso seguro, com página de perfil personalizada que exibe as "Descobertas" do utilizador.
-* **Identificação Botânica Inteligente:** Processamento na nuvem de imagens submetidas, retornando o nome comum, a identificação científica, uma breve descrição e a taxa de confiança da previsão da IA.
-* **Feed Comunitário:** Uma página pública e filtrável onde são apresentadas as plantas recentemente identificadas pela comunidade da plataforma.
-* **Coleções Digitais Pessoais:** Secção "Minhas Coleções" que serve como um herbário pessoal, guardando o histórico de todas as identificações bem-sucedidas.
+---
+
+## 📱 Páginas e Fluxo do Utilizador (SPA)
+
+A aplicação do lado do cliente é uma Single Page Application (SPA) moderna, reativa e fluida, estruturada em torno de seis ecrãs principais:
+
+1.  **Apresentação (`Landing.tsx`)**: Ecrã de entrada cativante com micro-animações, transições suaves e chamadas para ação.
+2.  **Autenticação (`Login.tsx` / `Register.tsx`)**: Formulários polidos com validações animadas em tempo real para registo e acesso seguro (com passwords cifradas via `bcryptjs` no servidor).
+3.  **Feed Comunitário (`Feed.tsx`)**: Apresenta em tempo real as plantas identificadas por toda a comunidade. As consultas são otimizadas na cloud através de uma camada Redis super rápida.
+4.  **Scanner de Plantas com IA (`Scan.tsx`)**:
+    *   Solicita um token SAS (Shared Access Signature) temporário e seguro do Azure Blob Storage.
+    *   Efetua o upload seguro da fotografia diretamente do browser para o Blob Storage.
+    *   Chama a análise de IA do Azure para processar a imagem e identificar a planta.
+5.  **Perfil e Herbário Digital (`Profile.tsx`)**: Apresenta as informações do utilizador e uma galeria pessoal organizada contendo o histórico de todas as identificações bem-sucedidas.
+
+---
+
+## ✨ Funcionalidades e Ecrãs
+
+*   **Autenticação e Gestão de Perfil**: Sistema de registo e acesso seguro, com página de perfil personalizada que exibe as "Descobertas" do utilizador.
+*   **Identificação Botânica Inteligente**: Processamento na nuvem de imagens submetidas, retornando o nome comum, a identificação científica, uma breve descrição e a taxa de confiança da previsão da IA.
+*   **Feed Comunitário**: Uma página pública e filtrável onde são apresentadas as plantas recentemente identificadas pela comunidade da plataforma.
+*   **Coleções Digitais Pessoais**: Secção "Minhas Coleções" que serve como um herbário pessoal, guardando o histórico de todas as identificações bem-sucedidas.
 
 <br>
 
@@ -31,21 +51,70 @@ Este projeto foi desenvolvido no âmbito da unidade curricular Computação em N
 
 <br>
 
-## 🛠️ Tecnologias e Infraestrutura
-A infraestrutura tecnológica assenta numa arquitetura moderna e escalável na nuvem Microsoft Azure.
-* **Front-end:** Desenvolvido em React.
-* **Alojamento e CI/CD:** Azure App Service com integração direta ao GitHub para alojamento contínuo e implementação automática do código.
-* **Inteligência Artificial:** Azure Cognitive Services atuando como o motor central para a análise das fotografias e identificação das plantas.
-* **Processamento:** Azure Functions (Serverless) responsáveis pelo back-end automático de processamento de submissão de imagens.
-* **Base de Dados:** Azure Cosmos DB for NoSQL para a persistência não relacional dos dados de utilizadores e do feed.
-* **Armazenamento:** Azure Blob Storage para guardar de forma segura e fiável as imagens submetidas.
-* **Isolamento:** Docker Containers utilizados para isolar componentes específicos do sistema.
-* **Automação:** Criação autónoma da infraestrutura baseada em scripts de PowerShell utilizando a Azure CLI.
+---
+
+## 🛠️ Tecnologias e Infraestrutura Cloud-Native
+
+A arquitetura tecnológica da solução assenta em serviços modernos e totalmente integrados na nuvem **Microsoft Azure**:
+
+*   **Front-end (Vite + React)**: Desenvolvido em **React (v18)** com build super rápido via **Vite**, estilizado com **Tailwind CSS v4** (variáveis HSL e glassmorphism), icons **Lucide React** e animações fluidas com **Motion**.
+*   **Back-end Serverless (Azure Functions v4)**: API desenvolvida no modelo de programação v4 Node.js, com 7 endpoints serverless isolados para gestão de feeds, perfis, tokens SAS e análises de IA.
+*   **Identificação por Inteligência Artificial**: **Azure AI Vision (Image Analysis v4.0)** integrado para extração de tags, legendagem automática de fotos e validação de espécies botânicas.
+*   **Base de Dados**: **Azure Cosmos DB (NoSQL)** configurado em modo Serverless para guardar de forma escalável e com latência mínima os metadados de utilizadores e plantas.
+*   **Armazenamento Multimédia**: **Azure Blob Storage** com permissões seguras e regras de CORS ativas para gerir o ciclo de vida e upload direto das fotos das plantas.
+*   **Cache de Alto Desempenho (Redis em ACI)**: Um contentor Docker Alpine com **Redis** hospedado no **Azure Container Instances (ACI)** que serve como cache de alto rendimento. Implementa um sistema robusto de *lazy-connection* no back-end para evitar bloqueios de gRPC no arranque e invalidar caches de feed e galeria de forma instantânea quando novas plantas são detetadas.
+*   **Infraestrutura como Código (Terraform)**: Toda a arquitetura Azure é provisionada de forma 100% automatizada e declarativa através dos ficheiros na pasta `/terraform`.
+
+---
+
+## 💻 Executar o Projeto Localmente
+
+### Front-end SPA
+1.  Instale as dependências do cliente:
+    ```bash
+    npm install
+    ```
+2.  Inicie o servidor de desenvolvimento local:
+    ```bash
+    npm run dev
+    ```
+    A aplicação estará disponível em `http://localhost:5173`.
+
+### Back-end API
+Consulte o repositório [ESTufa-API](https://github.com/tomassantos21/ESTufa-API) para obter instruções detalhadas sobre a execução local das Azure Functions e a sua integração com os emuladores locais ou serviços na nuvem.
+
+---
+
+## ☁️ Implementação da Infraestrutura com Terraform
+
+Os ficheiros de configuração na pasta `/terraform` permitem criar de raiz ou atualizar toda a infraestrutura Azure:
+
+1.  Aceda à pasta do Terraform:
+    ```bash
+    cd terraform
+    ```
+2.  Inicialize o Terraform e descarregue os providers necessários:
+    ```bash
+    terraform init
+    ```
+3.  Visualize o plano de execução das alterações:
+    ```bash
+    terraform plan
+    ```
+4.  Aplique as alterações na sua subscrição Azure:
+    ```bash
+    terraform apply -auto-approve
+    ```
+
+---
 
 ## 👥 Autores
-* Catarina Antunes (nº 20170667)
-* Martim Martins (nº 20230327)
-* Tomás Santos (nº 20220896)
+Trabalho académico realizado por:
+*   **Catarina Antunes** (nº 20170667)
+*   **Martim Martins** (nº 20230327)
+*   **Tomás Santos** (nº 20220896)
+
+---
 
 ## 📄 Licença
-Este projeto encontra-se sob a licença MIT.
+Este projeto encontra-se sob a licença MIT. Para mais informações, consulte o ficheiro [LICENSE](LICENSE).
