@@ -105,7 +105,7 @@ Durante o provisionamento, o recurso `azurerm_app_service_source_control.fe_depl
 
 ---
 
-### Passo 2: Sincronização Inicial e Compilação no Azure App Service
+### Sincronização Inicial e Compilação no Azure App Service
 Assim que a infraestrutura é criada no Passo 1, o Terraform executa de forma automática um bloco `null_resource.sync_frontend` que invoca o comando da Azure CLI:
 ```bash
 az webapp deployment source sync --name <NOME_DA_WEB_APP> --resource-group estufa-rg
