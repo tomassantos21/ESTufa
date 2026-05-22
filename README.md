@@ -69,24 +69,28 @@ A arquitetura tecnológica da solução assenta em serviços modernos e totalmen
 
 ## ☁️ Como Implementar e Executar na Nuvem (Microsoft Azure)
 
-Esta plataforma foi desenhada especificamente para correr de forma nativa na nuvem Microsoft Azure. O front-end (React SPA) é servido por um **Azure Linux Web App** nativo e integrado com um pipeline automatizado de CI/CD via GitHub Actions.
+Esta plataforma foi desenhada especificamente para correr de forma nativa e integrada na nuvem Microsoft Azure. O front-end (React SPA) é servido por um **Azure Linux Web App** cujo código é importado a partir do repositório GitHub e compilados diretamente no servidor durante a criação da infraestrutura.
+
+> [!NOTE]
+> **Modelo de Integração Manual**: A plataforma não utiliza pipelines automáticos de CI/CD (como GitHub Actions) para novos commits. Em vez disso, utiliza uma **Integração Manual** (`use_manual_integration = true`). O Terraform associa o repositório à Web App e despoleta uma sincronização inicial (um *pull*) no momento em que cria a infraestrutura.
 
 ### Pré-requisitos
 *   Uma conta ativa na **Microsoft Azure** com subscrição válida.
 *   [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) instalada e autenticada (`az login`).
 *   [Terraform](https://developer.hashicorp.com/terraform/downloads) instalado para automatizar a criação da infraestrutura.
-*   Repositórios GitHub configurados para ativação automática do pipeline CI/CD.
 
 ---
 
-### Passo 1: Criar a Infraestrutura na Nuvem (Terraform)
+### Passo 1: Criar a Infraestrutura e Importar o Repositório (Terraform)
 Os ficheiros na pasta `/terraform` configuram e ligam automaticamente a base de dados, a storage account, o serviço de IA, a cache Redis, a Web App de front-end e o backend de Azure Functions.
+
+Durante o provisionamento, o recurso `azurerm_app_service_source_control.fe_deploy` é criado para associar a Web App diretamente ao seu repositório GitHub público (`https://github.com/tomassantos21/ESTufa`), ramo `main`.
 
 1.  Aceda à pasta do Terraform:
     ```bash
     cd terraform
     ```
-2.  Inicialize o Terraform para descarregar o provider da Azure:
+2.  Inicialize o Terraform e descarregue os providers da Azure:
     ```bash
     terraform init
     ```
@@ -98,29 +102,30 @@ Os ficheiros na pasta `/terraform` configuram e ligam automaticamente a base de 
     ```bash
     terraform apply -auto-approve
     ```
-    *Isto cria a Web App Linux do Front-end (ex: `estufa-frontend-jge55d`) e configura a variável `VITE_API_URL` para apontar de forma imediata para o endpoint da Function App.*
 
 ---
 
-### Passo 2: Publicação e Execução Automática (CI/CD)
-O front-end está ligado à Azure Web App utilizando pipelines do **GitHub Actions** (`.github/workflows`) para efetuar a compilação de produção e a publicação automática no Azure App Service a cada push na branch `main`:
+### Passo 2: Sincronização Inicial e Compilação no Azure App Service
+Assim que a infraestrutura é criada no Passo 1, o Terraform executa de forma automática um bloco `null_resource.sync_frontend` que invoca o comando da Azure CLI:
+```bash
+az webapp deployment source sync --name <NOME_DA_WEB_APP> --resource-group estufa-rg
+```
 
-1.  O pipeline do GitHub Action é acionado ao efetuar commit e push para o repositório principal:
-    ```bash
-    git add .
-    git commit -m "Deploy production client"
-    git push origin main
-    ```
-2.  O GitHub Actions encarrega-se de:
-    *   Descarregar o código e configurar a versão estável do Node.js (v22).
-    *   Resolver e descarregar as dependências de produção (`npm install`).
-    *   Compilar os recursos estáticos do React com Vite (`npm run build`).
-    *   Enviar o pacote final compilado diretamente para o Azure Linux Web App utilizando as credenciais seguras de publicação.
-3.  O Azure App Service recebe o pacote final no diretório `/home/site/wwwroot/dist` e executa o servidor de ficheiros PM2 em modo SPA:
+Este comando solicita ao Azure App Service que leia o repositório GitHub especificado no `main.tf` e obtenha o código da aplicação. O processo decorre da seguinte forma:
+
+1.  O Azure App Service efetua o *pull* do código do repositório remoto GitHub para o servidor da nuvem.
+2.  Dado que a Web App está configurada em `main.tf` com o parâmetro `"SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"`, o motor Kudu da Azure deteta o projeto React/Vite e inicia a compilação local no lado do servidor:
+    *   Instala as dependências de Node.js (`npm install`).
+    *   Compila os ficheiros estáticos de produção da aplicação React SPA (`npm run build`).
+3.  O servidor PM2 da Web App é iniciado para servir a aplicação compilada a partir da pasta `/home/site/wwwroot/dist` em modo Single Page Application (SPA):
     ```bash
     pm2 serve /home/site/wwwroot/dist --no-daemon --spa
     ```
-    *O front-end fica imediatamente ativo e disponível de forma segura através do URL público disponibilizado pelo App Service (ex: `https://estufa-frontend-jge55d.azurewebsites.net`).*
+4.  A aplicação fica ativa e totalmente operacional através do URL público gerado pela Azure (ex: `https://estufa-frontend-jge55d.azurewebsites.net`).
+
+> [!TIP]
+> Caso faça alterações futuras no código do repositório e queira refletir essas mudanças na Web App, poderá forçar uma nova sincronização manual a partir do portal da Azure (secção *Deployment Center*) ou executando novamente o comando `az webapp deployment source sync` indicado acima.
+
 
 ---
 
