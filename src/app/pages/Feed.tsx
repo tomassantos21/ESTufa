@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+// @ts-ignore - module has no published type declarations
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
 import { useAzure } from '../context/AzureContext';
 import { User, Heart, Sparkles, Filter } from 'lucide-react';
