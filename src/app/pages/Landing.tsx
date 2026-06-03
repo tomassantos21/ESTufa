@@ -9,8 +9,7 @@ export function Landing() {
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
-    offset: ["start start", "end start"],
-    layoutEffect: false
+    offset: ["start start", "end start"]
   });
 
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -20,7 +19,7 @@ export function Landing() {
       {/* Hero Section */}
       <section ref={heroRef} className="relative h-[90vh] flex items-start justify-center overflow-hidden pt-24" style={{ position: 'relative' }}>
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-stone-900/60 via-stone-900/40 to-stone-50 z-10" />
+          <div className="absolute inset-0 bg-linear-to-b from-stone-900/60 via-stone-900/40 to-stone-50 z-10" />
           <motion.img 
             style={{ y }}
             src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?q=80&w=2070&auto=format&fit=crop" 
@@ -64,7 +63,7 @@ export function Landing() {
               <span className="relative z-10 flex items-center gap-2">
                 Começar Agora <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-linear-to-r from-green-500 to-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </NavLink>
             
             <NavLink

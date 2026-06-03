@@ -187,12 +187,12 @@ resource "azurerm_windows_function_app" "backend" {
 }
 
 # Ligação ao Repo do Back-end (Functions)
-# resource "azurerm_app_service_source_control" "be_deploy" {
-#   app_id                 = azurerm_windows_function_app.backend.id
-#   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
-#   branch                 = "main"
-#   use_manual_integration = true
-# }
+ resource "azurerm_app_service_source_control" "be_deploy" {
+   app_id                 = azurerm_windows_function_app.backend.id
+   repo_url               = "https://github.com/tomassantos21/ESTufa-API"
+   branch                 = "main"
+   use_manual_integration = true
+ }
 
 # 8. Azure Container Instance (Para satisfazer o critério de Contentores Docker)
 resource "azurerm_container_group" "cache" {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAzure } from '../context/AzureContext';
 import { Login } from './Login';
 import { LogOut, User as UserIcon, Settings, Calendar, AtSign, Mail, MapPin } from 'lucide-react';
+// @ts-expect-error - missing type declarations for this dependency
 import Masonry, { ResponsiveMasonry } from 'react-responsive-masonry';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileEditor } from '../components/ProfileEditor';
